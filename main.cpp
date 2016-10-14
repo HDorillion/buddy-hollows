@@ -69,7 +69,7 @@ Mat findObject(Mat &tracklines, Mat &orig, int (&lastposit)[2]){
 
     // Threshhold the image
     Mat imgThresh;
-    inRange(imgHSV, Scalar(0, 100, 100), Scalar(10, 255, 255), imgThresh);
+    inRange(imgHSV, Scalar(160, 100, 100), Scalar(179, 255, 255), imgThresh);
 
     // Morphological opening (remove fg objects)
     erode(imgThresh, imgThresh, getStructuringElement(MORPH_ELLIPSE, Size(5,5)));
