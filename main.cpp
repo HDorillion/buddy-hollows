@@ -12,11 +12,13 @@ Mat findObject(Mat &background, Mat &orig, int (&lastposit)[2]);
 
 int main(/*int argc, char *argv[]*/)
 {
+    // Define variables
     bool die = false;
     string filename("snapshot");
     string suffix(".png");
     int i_snap = 0;
 
+    // Define image matrices
     Mat depthMat(Size(640,480),CV_16UC1);
     Mat depthf (Size(640,480),CV_8UC1);
     Mat rgbMat(Size(640,480),CV_8UC3,Scalar(0));
@@ -24,27 +26,28 @@ int main(/*int argc, char *argv[]*/)
     // Prepare preprocessing directive
     Mat imgLines = Mat::zeros(Size(640,480), CV_8UC3);
 
-    // The next two lines must be changed as Freenect::Freenect
-    // isn't a template but the method createDevice:
-    // Freenect::Freenect<MyFreenectDevice> freenect;
-    // MyFreenectDevice& device = freenect.createDevice(0);
-    // by these two lines:
-
+    // Define freenect device
     Freenect::Freenect freenect;
     MyFreenectDevice& device = freenect.createDevice<MyFreenectDevice>(0);
 
+    // lastposit[] holds data of object's last position
     int lastposit[2] = {0, 0};
 
+    // Create windows and begin capturing data
     namedWindow("rgb",CV_WINDOW_AUTOSIZE);
     namedWindow("depth",CV_WINDOW_AUTOSIZE);
     device.startVideo();
     device.startDepth();
+
+    // Process data
     while (!die) {
         device.getVideo(rgbMat);
         device.getDepth(depthMat);
         imshow("rgb", findObject(imgLines, rgbMat, (&lastposit)[0]));
         depthMat.convertTo(depthf, CV_8UC1, 255.0/2048.0);
         imshow("depth",depthf);
+
+        // Escape on escape
         char k = cvWaitKey(5);
         if( k == 27 ){
             break;
@@ -56,9 +59,12 @@ int main(/*int argc, char *argv[]*/)
             i_snap++;
         }
     }
+
+    // Cleanup
     destroyAllWindows();
     device.stopVideo();
     device.stopDepth();
+
     return 0;
 }
 
@@ -90,10 +96,12 @@ Mat findObject(Mat &tracklines, Mat &orig, int (&lastposit)[2]){
         int posX = dM10 / dArea;
         int posY = dM01 / dArea;
 
+        // Draw tracking line
         if(lastposit[0] >= 0 && lastposit[1] >= 0 && posX >= 0 && posY >= 0){
             line(tracklines, Point(posX, posY), Point(lastposit[0], lastposit[1]), Scalar(0,255,255));
         }
 
+        // Index position vector
         lastposit[0] = posX;
         lastposit[1] = posY;
     }
