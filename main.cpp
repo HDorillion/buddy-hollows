@@ -90,8 +90,6 @@ Mat findObject(Mat &tracklines, Mat &orig, int (&lastposit)[2]){
         int posX = dM10 / dArea;
         int posY = dM01 / dArea;
 
-        printf("X: %d, Y: %d\n", posX, posY);
-
         if(lastposit[0] >= 0 && lastposit[1] >= 0 && posX >= 0 && posY >= 0){
             line(tracklines, Point(posX, posY), Point(lastposit[0], lastposit[1]), Scalar(0,255,255));
         }
