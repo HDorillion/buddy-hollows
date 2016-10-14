@@ -1,0 +1,4 @@
+#ifndef FREENECTDEVICE_H
+#define FREENECTDEVICE_H
+
+#endif // FREENECTDEVICE_H
