@@ -1,5 +1,6 @@
 #include "myfreenectdevice.h"
 #include <stdio.h>
+#include <map>
 
 #include "opencv2/core.hpp"
 #include "opencv2/highgui.hpp"
@@ -8,7 +9,16 @@
 using namespace std;
 using namespace cv;
 
-Mat findObject(Mat &background, Mat &orig, int (&lastposit)[2]);
+// Global variables
+map<string,int> BGR = {
+    {"bl", 175},
+    {"bh", 255},
+    {"gl", 70},
+    {"gh", 200},
+    {"rl", 145},
+    {"rh", 255}};
+
+Mat findObject(Mat &orig);
 
 int main(/*int argc, char *argv[]*/)
 {
@@ -16,6 +26,7 @@ int main(/*int argc, char *argv[]*/)
     bool die = false;
     string filename("snapshot");
     string suffix(".png");
+    string rgbwindow = "RGB";
     int i_snap = 0;
 
     // Define image matrices
@@ -23,19 +34,21 @@ int main(/*int argc, char *argv[]*/)
     Mat depthf (Size(640,480),CV_8UC1);
     Mat rgbMat(Size(640,480),CV_8UC3,Scalar(0));
 
-    // Prepare preprocessing directive
-    Mat imgLines = Mat::zeros(Size(640,480), CV_8UC3);
-
     // Define freenect device
     Freenect::Freenect freenect;
     MyFreenectDevice& device = freenect.createDevice<MyFreenectDevice>(0);
 
-    // lastposit[] holds data of object's last position
-    int lastposit[2] = {0, 0};
-
-    // Create windows and begin capturing data
-    namedWindow("rgb",CV_WINDOW_AUTOSIZE);
+    // Create windows and trackbars
+    namedWindow(rgbwindow,CV_WINDOW_AUTOSIZE);
     namedWindow("depth",CV_WINDOW_AUTOSIZE);
+
+    createTrackbar("rh", rgbwindow, &BGR.at("rh"), 255);
+    createTrackbar("rl", rgbwindow, &BGR.at("rl"), 255);
+    createTrackbar("gh", rgbwindow, &BGR.at("gh"), 255);
+    createTrackbar("gl", rgbwindow, &BGR.at("gl"), 255);
+    createTrackbar("bh", rgbwindow, &BGR.at("bh"), 255);
+    createTrackbar("bl", rgbwindow, &BGR.at("bl"), 255);
+
     device.startVideo();
     device.startDepth();
 
@@ -43,7 +56,7 @@ int main(/*int argc, char *argv[]*/)
     while (!die) {
         device.getVideo(rgbMat);
         device.getDepth(depthMat);
-        imshow("rgb", findObject(imgLines, rgbMat, (&lastposit)[0]));
+        imshow(rgbwindow, findObject(rgbMat));
         depthMat.convertTo(depthf, CV_8UC1, 255.0/2048.0);
         imshow("depth",depthf);
 
@@ -69,21 +82,24 @@ int main(/*int argc, char *argv[]*/)
 }
 
 // Find single object of particular color
-Mat findObject(Mat &tracklines, Mat &orig, int (&lastposit)[2]){
+Mat findObject(Mat &orig){
     Mat imgHSV;
     cvtColor(orig, imgHSV, COLOR_BGR2HSV);
 
-    // Threshhold the image
-    Mat imgThresh;
-    inRange(imgHSV, Scalar(160, 100, 100), Scalar(179, 255, 255), imgThresh);
-
     // Morphological opening (remove fg objects)
-    erode(imgThresh, imgThresh, getStructuringElement(MORPH_ELLIPSE, Size(5,5)));
-    dilate(imgThresh, imgThresh, getStructuringElement(MORPH_ELLIPSE, Size(5,5)));
+    erode(imgHSV, imgHSV, getStructuringElement(MORPH_ELLIPSE, Size(5,5)));
+    dilate(imgHSV, imgHSV, getStructuringElement(MORPH_ELLIPSE, Size(5,5)));
 
     // Morphological closing (remove fg holes)
-    dilate(imgThresh, imgThresh, getStructuringElement(MORPH_ELLIPSE, Size(5,5)));
-    erode(imgThresh, imgThresh, getStructuringElement(MORPH_ELLIPSE, Size(5,5)));
+    dilate(imgHSV, imgHSV, getStructuringElement(MORPH_ELLIPSE, Size(5,5)));
+    erode(imgHSV, imgHSV, getStructuringElement(MORPH_ELLIPSE, Size(5,5)));
+
+    // Threshhold the image
+    Mat imgThresh;
+    inRange(imgHSV,
+            Scalar(BGR.at("rl"), BGR.at("gl"), BGR.at("bl")),
+            Scalar(BGR.at("rh"), BGR.at("gh"), BGR.at("bh")),
+            imgThresh);
 
     // Calculate moment
     Moments objMoments = moments(imgThresh);
@@ -95,17 +111,9 @@ Mat findObject(Mat &tracklines, Mat &orig, int (&lastposit)[2]){
     if(dArea > 10000){
         int posX = dM10 / dArea;
         int posY = dM01 / dArea;
-
-        // Draw tracking line
-        if(lastposit[0] >= 0 && lastposit[1] >= 0 && posX >= 0 && posY >= 0){
-            line(tracklines, Point(posX, posY), Point(lastposit[0], lastposit[1]), Scalar(0,255,255));
-        }
-
-        // Index position vector
-        lastposit[0] = posX;
-        lastposit[1] = posY;
+        circle(orig, Point(posX,posY), 8, Scalar(0,255,0), -1, 8);
     }
 
     // Return tracklines
-    return orig + tracklines;
+    return orig;
 }
