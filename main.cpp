@@ -10,13 +10,13 @@ using namespace std;
 using namespace cv;
 
 // Global variables
-map<string,int> BGR = {
-    {"bl", 175},
-    {"bh", 255},
-    {"gl", 70},
-    {"gh", 200},
-    {"rl", 145},
-    {"rh", 255}};
+map<string,int> HSV = {
+    {"Hl", 0},
+    {"Hh", 10},
+    {"Sl", 175},
+    {"Sh", 255},
+    {"Vl", 100},
+    {"Vh", 255}};
 
 Mat findObject(Mat &orig);
 
@@ -26,7 +26,7 @@ int main(/*int argc, char *argv[]*/)
     bool die = false;
     string filename("snapshot");
     string suffix(".png");
-    string rgbwindow = "RGB";
+    string hsvtrackbars = "HSV Trackbars", rgbwindow = "RGB";
     int i_snap = 0;
 
     // Define image matrices
@@ -39,15 +39,16 @@ int main(/*int argc, char *argv[]*/)
     MyFreenectDevice& device = freenect.createDevice<MyFreenectDevice>(0);
 
     // Create windows and trackbars
+    namedWindow(hsvtrackbars, CV_WINDOW_AUTOSIZE);
     namedWindow(rgbwindow,CV_WINDOW_AUTOSIZE);
     namedWindow("depth",CV_WINDOW_AUTOSIZE);
 
-    createTrackbar("rh", rgbwindow, &BGR.at("rh"), 255);
-    createTrackbar("rl", rgbwindow, &BGR.at("rl"), 255);
-    createTrackbar("gh", rgbwindow, &BGR.at("gh"), 255);
-    createTrackbar("gl", rgbwindow, &BGR.at("gl"), 255);
-    createTrackbar("bh", rgbwindow, &BGR.at("bh"), 255);
-    createTrackbar("bl", rgbwindow, &BGR.at("bl"), 255);
+//    createTrackbar("Hh", hsvtrackbars, &HSV.at("Hh"), 179);
+//    createTrackbar("Hl", hsvtrackbars, &HSV.at("Hl"), 179);
+//    createTrackbar("Sh", hsvtrackbars, &HSV.at("Sh"), 255);
+//    createTrackbar("Sl", hsvtrackbars, &HSV.at("Sl"), 255);
+//    createTrackbar("Vh", hsvtrackbars, &HSV.at("Vh"), 255);
+//    createTrackbar("Vl", hsvtrackbars, &HSV.at("Vl"), 255);
 
     device.startVideo();
     device.startDepth();
@@ -97,8 +98,8 @@ Mat findObject(Mat &orig){
     // Threshhold the image
     Mat imgThresh;
     inRange(imgHSV,
-            Scalar(BGR.at("rl"), BGR.at("gl"), BGR.at("bl")),
-            Scalar(BGR.at("rh"), BGR.at("gh"), BGR.at("bh")),
+            Scalar(HSV.at("Hl"), HSV.at("Sl"), HSV.at("Vl")),
+            Scalar(HSV.at("Hh"), HSV.at("Sh"), HSV.at("Vh")),
             imgThresh);
 
     // Calculate moment
