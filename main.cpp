@@ -70,6 +70,7 @@ int main(int argc, char *argv[])
     Mat depthRef(Size(640,480),CV_16UC1);
     Mat depthMat(Size(640,480),CV_16UC1);
     Mat depthf(Size(640,480),CV_8UC1), depthOut(Size(640,480),CV_8UC1), depthDisp(Size(640,480),CV_8UC1);
+    Mat depthrgb;
 
     Mat rgbRef(Size(640,480), CV_8UC3);
     Mat rgbMat(Size(640,480),CV_8UC3,Scalar(0)), rgbOut(Size(640,480),CV_8UC3,Scalar(0));
@@ -119,6 +120,9 @@ int main(int argc, char *argv[])
                 // Set object up to be tracked
                     // On success, current_track = TRACKING
             }
+        }
+        else if(current_motion == STATIONARY && current_track == TRACKING){
+            // Follow stationary tracking algorithm
         }
 
         differentiateObjects(rgbMat, rgbOut, thresh,
@@ -186,14 +190,24 @@ bool extractDepthROI(Mat &depthsrc, Mat &ROI, int &thresh){
 
     sort(begin(bigvex), end(bigvex), pair_is_less);
 
-    for(unsigned int i = 0; i < bigvex.size() / 3; ++i){
+//    for(unsigned int i = 0; i < bigvex.size() / 3; ++i){
 //        rectangle(drawing, boundRect[bigvex.at(i).first].tl(), boundRect[bigvex.at(i).first].br(), color, 1, 8);
-        drawContours(drawing, hull, bigvex.at(i).first, color, 1, 8, vector<Vec4i>(), 0, Point());
-        break;
+//        drawContours(drawing, hull, bigvex.at(i).first, color, 1, 8, vector<Vec4i>(), 0, Point());
+//        ROI = depthsrc(Rect(boundRect[bigvex.at(i).first].tl(), boundRect[bigvex.at(i).first].br()));
+//        break;
+//    }
+
+    for(unsigned int i = 0; i < bigvex.size() / 3; ++i){
+        if(bigvex.size() >= 2){
+            Point upperleft = (boundRect[bigvex.at(i).first].tl() + boundRect[bigvex.at(i + 1).first].tl()) / 2;
+            Point bottomright = (boundRect[bigvex.at(i).first].br() + boundRect[bigvex.at(i + 1).first].br()) / 2;
+            ROI = depthsrc(Rect(upperleft, bottomright));
+            break;
+        }
     }
 
-    drawing.copyTo(ROI);
-    ROI = threshMat + ROI;
+//    drawing.copyTo(ROI);
+//    ROI = threshMat + ROI;
 
     if(!ROI.empty()){
         return true;
