@@ -24,7 +24,7 @@ RNG rng(12345);
 enum MOTION_STATE {STATIONARY = 0, MOVING = 1};
 enum TRACK_STATE {FINDING = 0, TRACKING = 1};
 
-bool extractDepthROI(Mat &depthsrc, Mat &ROI, int &thresh);
+bool extractDepthROI(Mat &depthsrc, Mat &ROI, Rect ROIrect, int &thresh);
 bool pair_is_less(pair<int, double> i, pair<int, double> j);
 vector<Point> contoursConvexHull(vector<vector<Point>> contours);
 void buildOutlinesFromDepth(Mat &graysrc, Mat &dst, int &thresh);
@@ -75,6 +75,7 @@ int main(int argc, char *argv[])
     Mat rgbRef(Size(640,480), CV_8UC3);
     Mat rgbMat(Size(640,480),CV_8UC3,Scalar(0)), rgbOut(Size(640,480),CV_8UC3,Scalar(0));
     Mat ROI;
+    Rect ROIrect;
 
 //    Mat displayMat, left, right;
 //    displayMat = Mat(depthOut.rows, depthOut.cols + rgbOut.cols, CV_8UC3);
@@ -115,10 +116,11 @@ int main(int argc, char *argv[])
         if(current_motion == STATIONARY && current_track == FINDING){
             depthf.copyTo(depthRef);
             rgbMat.copyTo(rgbRef);
-            if(extractDepthROI(depthRef, ROI, thresh)){
+            if(extractDepthROI(depthRef, ROI, ROIrect, thresh)){
                 // Image found
                 // Set object up to be tracked
                     // On success, current_track = TRACKING
+                rectangle(rgbOut, ROIrect, Scalar(0,255,0), 8);
             }
         }
         else if(current_motion == STATIONARY && current_track == TRACKING){
@@ -153,7 +155,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-bool extractDepthROI(Mat &depthsrc, Mat &ROI, int &thresh){
+bool extractDepthROI(Mat &depthsrc, Mat &ROI, Rect ROIrect, int &thresh){
     Mat threshMat;
     vector<vector<Point>> contours;
     vector<Vec4i> hierarchy;
@@ -201,7 +203,8 @@ bool extractDepthROI(Mat &depthsrc, Mat &ROI, int &thresh){
         if(bigvex.size() >= 2){
             Point upperleft = (boundRect[bigvex.at(i).first].tl() + boundRect[bigvex.at(i + 1).first].tl()) / 2;
             Point bottomright = (boundRect[bigvex.at(i).first].br() + boundRect[bigvex.at(i + 1).first].br()) / 2;
-            ROI = depthsrc(Rect(upperleft, bottomright));
+            ROIrect = Rect(upperleft, bottomright);
+            ROI = depthsrc(ROIrect);
             break;
         }
     }
