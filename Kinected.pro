@@ -17,7 +17,9 @@ unix:LIBS += -L/usr/local/lib -lopencv_imgcodecs \
             -I/usr/local/include/libfreenect \
 
 SOURCES += main.cpp \
-    myfreenectdevice.cpp
+    myfreenectdevice.cpp \
+    objfollowing.cpp
 
 HEADERS += \
-    myfreenectdevice.h
+    myfreenectdevice.h \
+    objfollowing.h
