@@ -16,10 +16,9 @@ enum TRACK_STATE {FINDING = 0, TRACKING = 1};
 extern map<string,int> HSV;
 
 // Functions
-void posterizeRGB(Mat &src, Mat &dst);
+bool discernObject(Mat &src, const Scalar lb, const Scalar ub, const int &num_objects, Point &center, Mat &ROI);
 bool extractRGBROI(Mat &src, Mat &ROI, Scalar lb, Scalar ub);
 bool extractDepthROI(Mat &depthsrc, Mat &ROI, int &thresh);
-void buildContours(Mat &src, Mat &dst, int &thresh);
 void differentiateObjects(Mat &src, Mat &ROI, int &thresh, Scalar HSVlb, Scalar HSVub);
 
 #endif // OBJFOLLOWING_H

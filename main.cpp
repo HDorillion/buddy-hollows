@@ -12,7 +12,7 @@ using namespace cv;
 int main(int argc, char *argv[])
 {
     bool debug = false;
-    int thresh = 110;
+    int thresh = 110, num_objects = 3;
     if(argc < 1) {
         cerr << "Usage: " << endl
              << "Kinected -options\n"
@@ -91,17 +91,12 @@ int main(int argc, char *argv[])
             depthf.copyTo(depthRef);
             rgbMat.copyTo(rgbRef);
 
-            if(extractRGBROI(rgbOut, ROI,
+            if(discernObject(rgbMat,
                              Scalar(HSV.at("Hl"), HSV.at("Sl"), HSV.at("Vl")),
-                             Scalar(HSV.at("Hh"), HSV.at("Sh"), HSV.at("Vh"))),
-                             center){
+                             Scalar(HSV.at("Hh"), HSV.at("Sh"), HSV.at("Vh")),
+                             num_objects, center, ROI)){
                 // Do stuff
             }
-//            if(extractDepthROI(depthRef, ROI, thresh)){
-                // Image found
-                // Set object up to be tracked
-                    // On success, current_track = TRACKING
-//            }
         }
         else if(current_motion == STATIONARY && current_track == TRACKING){
             // Follow stationary tracking algorithm
@@ -118,6 +113,9 @@ int main(int argc, char *argv[])
 //        imshow(rgbwindowname, rgbOut);
         if(!ROI.empty()){
             imshow(depthwindowname, ROI);
+        }
+        if(!rgbMat.empty()){
+            imshow(rgbwindowname, rgbMat);
         }
 
         // Escape on escape

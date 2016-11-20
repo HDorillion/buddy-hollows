@@ -1,50 +1,87 @@
 #include "opencv2/video.hpp"
 #include "opencv2/objdetect.hpp"
+#include "opencv2/highgui.hpp"
 
 #include "objfollowing.h"
 
 // Map of HSV values
 map<string,int> HSV {
-    {"Hl", 100},
-    {"Hh", 120},
-    {"Sl", 100},
+    {"Hl", 55},
+    {"Hh", 70},
+    {"Sl", 125},
     {"Sh", 255},
-    {"Vl", 50},
-    {"Vh", 180}
+    {"Vl", 100},
+    {"Vh", 255}
 };
 
 // Color variable range
 RNG rng(12345);
 
-// posterizeRGB takes a source image and creates a posterized version
-void posterizeRGB(Mat &src, Mat &dst){
-    Mat samples(src.rows * src.cols, 3, CV_32F);
-    for( int y = 0; y < src.rows; y++ )
-        for( int x = 0; x < src.cols; x++ )
-            for( int z = 0; z < 3; z++)
-                samples.at<float>(y + x*src.rows, z) = src.at<Vec3b>(y,x)[z];
+// discernObject
+bool discernObject(Mat &src, const Scalar lb, const Scalar ub, const int &num_objects, Point &center, Mat &ROI){
+    Mat colorThresh, threshMat;
+    vector<vector<Point>> contours;
+    vector<Vec4i> hierarchy;
 
-    int clusterCount = 10;
-    Mat labels;
-    int attempts = 2;
-    Mat centers;
-    kmeans(samples, clusterCount, labels,
-           TermCriteria(TermCriteria::EPS + TermCriteria::COUNT, 10, 1.0),
-           attempts, KMEANS_PP_CENTERS, centers );
+    Mat HSVMat;
+    cvtColor(src, HSVMat, COLOR_BGR2HSV);
 
-    Mat new_image( src.size(), src.type() );
-    for( int y = 0; y < src.rows; y++ ){
-        for( int x = 0; x < src.cols; x++ ){
-            int cluster_idx = labels.at<int>(y + x*src.rows,0);
-            new_image.at<Vec3b>(y,x)[0] = centers.at<float>(cluster_idx, 0);
-            new_image.at<Vec3b>(y,x)[1] = centers.at<float>(cluster_idx, 1);
-            new_image.at<Vec3b>(y,x)[2] = centers.at<float>(cluster_idx, 2);
+    // Find contours within color range
+    inRange(HSVMat, lb, ub, colorThresh);
+    GaussianBlur(colorThresh, threshMat, Size(15,15), 7);
+    findContours(threshMat, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+
+    // Approximate contours to polygons + get bounding rects and circles
+    vector<vector<Point>> hull(contours.size());
+    vector<RotatedRect> minRect(contours.size());
+
+    // Get polygonal contours and bounding boxes
+    Mat drawing;
+    src.copyTo(drawing);
+    vector<pair<int, double>> areas;
+
+    // Find all hull contours
+    for(unsigned int i = 0; i < contours.size(); ++i){
+        convexHull(Mat(contours[i]), hull[i], false);
+        areas.push_back(make_pair(i, contourArea(hull[i])));
+    }
+
+    sort(begin(areas), end(areas), [](pair<int,double> i, pair<int,double> j) { return i.second > j.second; });
+
+    Point subcenter(0);
+    // Draw largest contours
+    for(unsigned int i = 0; i < areas.size() && i < num_objects; ++i){
+        int index = areas[i].first;
+        minRect[index] = minAreaRect(hull[index]);
+        drawContours(drawing, hull, index, Scalar(255,0,0), 2);
+        Point2f rect_points[4]; minRect[index].points(rect_points);
+        for(unsigned int j = 0; j < 4; ++j){
+            line(drawing, rect_points[j], rect_points[(j+1) % 4], Scalar(255,0,0), 2);
+        }
+        Moments hull_moment = moments(hull[index]);
+        int myx = hull_moment.m10 / hull_moment.m00;
+        int myy = hull_moment.m01 / hull_moment.m00;
+        subcenter += Point(myx, myy);
+    }
+
+    if(areas.size() != 0 && num_objects != 0){
+        unsigned int divisor = min((int)areas.size(), num_objects);
+        if(divisor != 0){
+            center = Point(subcenter.x / divisor, subcenter.y / divisor);
+            circle(drawing, center, 2, Scalar(0,0,255));
         }
     }
 
-    new_image.copyTo(dst);
+    drawing.copyTo(ROI);
+
+    // Check if ROI exists
+    if(!ROI.empty()){
+        return true;
+    }
+    return false;
 }
 
+// extractRGBROI ...
 bool extractRGBROI(Mat &src, Mat &ROI, Scalar lb, Scalar ub){
     Mat colorThresh, threshMat;
     vector<vector<Point>> contours;
@@ -57,7 +94,6 @@ bool extractRGBROI(Mat &src, Mat &ROI, Scalar lb, Scalar ub){
     // Threshold image to find the most likely person
     morphologyEx(colorThresh, colorThresh, MORPH_GRADIENT, getStructuringElement(MORPH_ELLIPSE, Size(3,3)));
     GaussianBlur(colorThresh, colorThresh, Size(15,15), 7);
-//    threshold(colorThresh, threshMat, thresh, 255, THRESH_BINARY);
     adaptiveThreshold(colorThresh, threshMat, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 15, -5);
     findContours(colorThresh, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
 
@@ -149,44 +185,6 @@ bool extractDepthROI(Mat &depthsrc, Mat &ROI, int &thresh){
         return true;
     }
     return false;
-}
-
-// buildContours takes a matrix, finds contours, then adds
-// bounding boxes to help track them
-void buildContours(Mat &graysrc, Mat &dst, int &thresh){
-    // Define variables
-    Mat threshold_output;
-    vector<vector<Point>> contours;
-    vector<Vec4i> hierarchy;
-
-    // Blur image
-    blur(graysrc, graysrc, Size(30,30));
-
-    // Threshold to detect contours
-    threshold(graysrc, threshold_output, thresh, 255, THRESH_BINARY);
-    findContours(graysrc, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
-
-    // Approximate contours to polygons + get bounding rects and circles
-    vector<vector<Point> > contours_poly( contours.size());
-    vector<Rect> boundRect( contours.size());
-    vector<Point2f>center( contours.size());
-    vector<float>radius( contours.size());
-
-    for(unsigned int i = 0; i < contours.size(); ++i){
-        approxPolyDP( Mat(contours[i]), contours_poly[i], 3, false);
-        boundRect[i] = boundingRect( Mat(contours_poly[i]));
-        minEnclosingCircle( (Mat)contours_poly[i], center[i], radius[i]);
-    }
-
-    // Draw polygonal contour + bonding rects + circles
-    for(unsigned int i = 0; i< contours.size(); ++i){
-        Scalar color = Scalar(rng.uniform(0,255), rng.uniform(0,255), rng.uniform(0,255));
-        if(radius[i] > 7){
-            drawContours(dst, contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point());
-            rectangle(dst, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0);
-            circle(dst, center[i], (int)radius[i], color, 2, 8, 0);
-        }
-    }
 }
 
 // differentiateObjects takes an image, extracts a range of colors
