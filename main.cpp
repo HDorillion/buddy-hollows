@@ -1,6 +1,5 @@
 #include "myfreenectdevice.h"
 #include <iostream>
-#include <map>
 
 #include "opencv2/core.hpp"
 #include "opencv2/highgui.hpp"
@@ -55,6 +54,8 @@ int main(int argc, char *argv[])
     Mat rgbMat(Size(640,480),CV_8UC3,Scalar(0)), rgbOut(Size(640,480),CV_8UC3,Scalar(0));
     Mat ROI;
 
+    Point center = Point(640 / 2, 480 / 2);
+
     // Define freenect device
     Freenect::Freenect freenect;
     MyFreenectDevice& device = freenect.createDevice<MyFreenectDevice>(0);
@@ -90,10 +91,10 @@ int main(int argc, char *argv[])
             depthf.copyTo(depthRef);
             rgbMat.copyTo(rgbRef);
 
-            posterizeRGB(rgbRef, rgbOut);
             if(extractRGBROI(rgbOut, ROI,
                              Scalar(HSV.at("Hl"), HSV.at("Sl"), HSV.at("Vl")),
-                             Scalar(HSV.at("Hh"), HSV.at("Sh"), HSV.at("Vh")))){
+                             Scalar(HSV.at("Hh"), HSV.at("Sh"), HSV.at("Vh"))),
+                             center){
                 // Do stuff
             }
 //            if(extractDepthROI(depthRef, ROI, thresh)){
@@ -114,7 +115,7 @@ int main(int argc, char *argv[])
         // Combine images and show
 //        rgbOut.copyTo(left);
 //        depthOut.copyTo(right);
-        imshow(rgbwindowname, rgbOut);
+//        imshow(rgbwindowname, rgbOut);
         if(!ROI.empty()){
             imshow(depthwindowname, ROI);
         }

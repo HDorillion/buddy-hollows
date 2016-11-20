@@ -24,9 +24,9 @@ void posterizeRGB(Mat &src, Mat &dst){
             for( int z = 0; z < 3; z++)
                 samples.at<float>(y + x*src.rows, z) = src.at<Vec3b>(y,x)[z];
 
-    int clusterCount = 8;
+    int clusterCount = 10;
     Mat labels;
-    int attempts = 3;
+    int attempts = 2;
     Mat centers;
     kmeans(samples, clusterCount, labels,
            TermCriteria(TermCriteria::EPS + TermCriteria::COUNT, 10, 1.0),
@@ -55,6 +55,7 @@ bool extractRGBROI(Mat &src, Mat &ROI, Scalar lb, Scalar ub){
 
     inRange(HSVMat, lb, ub, colorThresh);
     // Threshold image to find the most likely person
+    morphologyEx(colorThresh, colorThresh, MORPH_GRADIENT, getStructuringElement(MORPH_ELLIPSE, Size(3,3)));
     GaussianBlur(colorThresh, colorThresh, Size(15,15), 7);
 //    threshold(colorThresh, threshMat, thresh, 255, THRESH_BINARY);
     adaptiveThreshold(colorThresh, threshMat, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 15, -5);
