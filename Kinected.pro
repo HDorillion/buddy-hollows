@@ -3,8 +3,7 @@ CONFIG += console c++11
 CONFIG -= app_bundle
 CONFIG -= qt
 
-unix:LIBS += -L/usr/local/lib -lopencv_imgcodecs \
-            -L/usr/local/lib -lopencv_core \
+unix:LIBS +=-L/usr/local/lib -lopencv_core \
             -L/usr/local/lib -lopencv_highgui \
             -L/usr/local/lib -lopencv_video \
             -L/usr/local/lib -lopencv_videoio \

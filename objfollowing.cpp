@@ -7,8 +7,8 @@
 // Map of HSV values
 map<string,int> HSV {
     {"Hl", 55},
-    {"Hh", 70},
-    {"Sl", 125},
+    {"Hh", 80},
+    {"Sl", 110},
     {"Sh", 255},
     {"Vl", 100},
     {"Vh", 255}
@@ -50,7 +50,7 @@ bool discernObject(Mat &src, const Scalar lb, const Scalar ub, const int &num_ob
 
     Point subcenter(0);
     // Draw largest contours
-    for(unsigned int i = 0; i < areas.size() && i < num_objects; ++i){
+    for(unsigned int i = 0; i < areas.size() && (int)i < num_objects; ++i){
         int index = areas[i].first;
         minRect[index] = minAreaRect(hull[index]);
         drawContours(drawing, hull, index, Scalar(255,0,0), 2);
@@ -172,9 +172,11 @@ bool extractDepthROI(Mat &depthsrc, Mat &ROI, int &thresh){
     // Create ROI from largest two areas
     for(unsigned int i = 0; i < bigvex.size() / 3; ++i){
         if(bigvex.size() >= 2){
-            Point upperleft = (boundRect[bigvex.at(i).first].tl() + boundRect[bigvex.at(i + 1).first].tl()) / 2;
-            Point bottomright = (boundRect[bigvex.at(i).first].br() + boundRect[bigvex.at(i + 1).first].br()) / 2;
-            Rect ROIrect = Rect(upperleft, bottomright);
+            Point upperleft = (boundRect[bigvex.at(i).first].tl() + boundRect[bigvex.at(i + 1).first].tl());
+            Point ul = Point(upperleft.x / 2, upperleft.y / 2);
+            Point bottomright = (boundRect[bigvex.at(i).first].br() + boundRect[bigvex.at(i + 1).first].br());
+            Point lr = Point(bottomright.x / 2, bottomright.y / 2);
+            Rect ROIrect = Rect(ul, lr);
             ROI = depthsrc(ROIrect);
             break;
         }
@@ -192,7 +194,7 @@ bool extractDepthROI(Mat &depthsrc, Mat &ROI, int &thresh){
 // that color from each other.
 void differentiateObjects(Mat &src, Mat &dst, int &thresh, Scalar HSVlb, Scalar HSVub){
     Mat imgHSV;
-    dst = 0;
+    dst.setTo(Scalar(0,0,0));
     cvtColor(src, imgHSV, COLOR_BGR2HSV);
 
     // Morphological opening (remove fg objects)
