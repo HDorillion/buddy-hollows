@@ -89,6 +89,7 @@ void captureWebcam(int &num_objects){
 
     // Object tracking variables
     Point center = Point(640 / 2, 480 / 2);
+    int power = 0;
 
     //Define webcam
     VideoCapture webcap = VideoCapture(0);
@@ -112,6 +113,8 @@ void captureWebcam(int &num_objects){
                         Scalar(HSV.at("Hh"), HSV.at("Sh"), HSV.at("Vh")),
                         num_objects, center, ROI)){
                 // Do stuff
+            enginePower(center, power);
+            cout << power << "\n";
         }
 
         // Show images
@@ -146,6 +149,7 @@ void captureKinect(int &num_objects){
 
     // Object tracking variables
     Point center = Point(640 / 2, 480 / 2);
+    int power = 0;
 
     // Define freenect device
     Freenect::Freenect freenect;
@@ -174,6 +178,7 @@ void captureKinect(int &num_objects){
                         Scalar(HSV.at("Hh"), HSV.at("Sh"), HSV.at("Vh")),
                         num_objects, center, ROI)){
                 // Do stuff
+            enginePower(center, power);
         }
 
         // Show images

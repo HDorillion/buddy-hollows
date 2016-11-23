@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include "opencv2/video.hpp"
 #include "opencv2/objdetect.hpp"
 #include "opencv2/highgui.hpp"
@@ -48,22 +50,25 @@ bool discernObject(Mat &src, const Scalar lb, const Scalar ub, const int &num_ob
 
     sort(begin(areas), end(areas), [](pair<int,double> i, pair<int,double> j) { return i.second > j.second; });
 
-    Point subcenter(0);
     // Draw largest contours
+    Point subcenter(0);
     for(unsigned int i = 0; i < areas.size() && (int)i < num_objects; ++i){
         int index = areas[i].first;
-        minRect[index] = minAreaRect(hull[index]);
         drawContours(drawing, hull, index, Scalar(255,0,0), 2);
+        // Draw minimum rectangles
+        minRect[index] = minAreaRect(hull[index]);
         Point2f rect_points[4]; minRect[index].points(rect_points);
         for(unsigned int j = 0; j < 4; ++j){
             line(drawing, rect_points[j], rect_points[(j+1) % 4], Scalar(255,0,0), 2);
         }
+        // Calculate moments
         Moments hull_moment = moments(hull[index]);
         int myx = hull_moment.m10 / hull_moment.m00;
         int myy = hull_moment.m01 / hull_moment.m00;
         subcenter += Point(myx, myy);
     }
 
+    // Detect outliers and calculate center
     if(areas.size() != 0 && num_objects != 0){
         unsigned int divisor = min((int)areas.size(), num_objects);
         if(divisor != 0){
@@ -79,6 +84,19 @@ bool discernObject(Mat &src, const Scalar lb, const Scalar ub, const int &num_ob
         return true;
     }
     return false;
+}
+
+// enginePower takes a point and gives power a direction
+// and magnitude
+void enginePower(const Point &point, int &power, const unsigned int length, const unsigned int width){
+    const int reflength = length / 2, range = 20, exponent = 1.5;
+    int premod = 0;
+    const double b = 100 / pow(abs(reflength) + range, exponent);
+    // Process if in range
+    if(point.x >= (reflength + range) || point.x <= (reflength - range)){
+        premod = point.x - reflength;
+    }
+    power = b * pow(premod, exponent);
 }
 
 // extractRGBROI ...
