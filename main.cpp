@@ -88,8 +88,11 @@ void captureWebcam(int &num_objects){
     Mat ROI;
 
     // Object tracking variables
-    Point center = Point(640 / 2, 480 / 2);
+    Point center = Point(0, 0);
+    Point prev_center = center;
+    Rect boundRect;
     int power = 0;
+    double stdev = 10.0;
 
     //Define webcam
     VideoCapture webcap = VideoCapture(0);
@@ -108,18 +111,18 @@ void captureWebcam(int &num_objects){
 
         // Process images
         rgbMat.copyTo(rgbRef);
-        if(discernObject(rgbMat,
+//        int prevpower = power;
+        if(discernObject(rgbRef, num_objects, center, prev_center, boundRect,
                         Scalar(HSV.at("Hl"), HSV.at("Sl"), HSV.at("Vl")),
-                        Scalar(HSV.at("Hh"), HSV.at("Sh"), HSV.at("Vh")),
-                        num_objects, center, ROI)){
+                        Scalar(HSV.at("Hh"), HSV.at("Sh"), HSV.at("Vh")))){
                 // Do stuff
-            enginePower(center, power);
-            cout << power << "\n";
+//            turningPower(center, power);
+//            if(prevpower != power) cout << power << "\n";
         }
 
         // Show images
-        if(!ROI.empty()){
-            imshow(rgbwindowname, ROI);
+        if(!rgbRef.empty()){
+            imshow(rgbwindowname, rgbRef);
         }
 
         // Escape on escape
@@ -148,8 +151,11 @@ void captureKinect(int &num_objects){
     Mat ROI;
 
     // Object tracking variables
-    Point center = Point(640 / 2, 480 / 2);
+    Point center = Point(0, 0);
+    Point prev_center = center;
+    Rect boundRect;
     int power = 0;
+    double stdev = 10.0;
 
     // Define freenect device
     Freenect::Freenect freenect;
@@ -168,25 +174,27 @@ void captureKinect(int &num_objects){
         // Get Kinect data
         device.getDepth(depthMat);
         device.getVideo(rgbMat);
-        depthMat.convertTo(depthf, CV_8UC1, 255.0 / 2047.0);
-        depthf.copyTo(depthRef);
 
-        // Process images
+        // Process RGB image
         rgbMat.copyTo(rgbRef);
-        if(discernObject(rgbRef,
+        int prevpower = power;
+        if(discernObject(rgbRef, num_objects, center, prev_center, boundRect,
                         Scalar(HSV.at("Hl"), HSV.at("Sl"), HSV.at("Vl")),
-                        Scalar(HSV.at("Hh"), HSV.at("Sh"), HSV.at("Vh")),
-                        num_objects, center, ROI)){
-                // Do stuff
-            enginePower(center, power);
+                        Scalar(HSV.at("Hh"), HSV.at("Sh"), HSV.at("Vh")))){
+            // Prepare depth matrix
+            depthMat.convertTo(depthf, CV_8UC1, 255.0 / 2047.0);
+            depthf.copyTo(depthRef);
+            // Process depth image
+            forwardPower(depthRef, boundRect);
+//            if(prevpower != power) cout << power << "\n";
         }
 
         // Show images
+        if(!rgbRef.empty()){
+            imshow(rgbwindowname, rgbRef);
+        }
         if(!ROI.empty()){
             imshow(depthwindowname, ROI);
-        }
-        if(!rgbMat.empty()){
-            imshow(rgbwindowname, rgbMat);
         }
 
         // Escape on escape

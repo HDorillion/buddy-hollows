@@ -17,8 +17,13 @@ unix:LIBS +=-L/usr/local/lib -lopencv_core \
 
 SOURCES += main.cpp \
     myfreenectdevice.cpp \
-    objfollowing.cpp
+    objfollowing.cpp \
+    MovingAverages.cpp \
+    ControlSabertooth.cpp \
 
 HEADERS += \
     myfreenectdevice.h \
-    objfollowing.h
+    objfollowing.h \
+    MovingAverages.h \
+    ControlSabertooth.h \
+    constants.h \
